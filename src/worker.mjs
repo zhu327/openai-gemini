@@ -44,7 +44,7 @@ const API_VERSION = "v1beta";
 // https://github.com/google/generative-ai-js/blob/0931d2ce051215db72785d76fe3ae4e0bc3b5475/packages/main/src/requests/request.ts#L67
 const API_CLIENT = "genai-js/0.5.0"; // npm view @google/generative-ai version
 async function handleRequest(req, apiKey) {
-  const MODEL = "gemini-1.5-pro-latest";
+  const MODEL = "gemini-1.0-pro-latest";
   const TASK = req.stream ? "streamGenerateContent" : "generateContent";
   let url = `${BASE_URL}/${API_VERSION}/models/${MODEL}:${TASK}`;
   if (req.stream) { url += "?alt=sse"; }
@@ -196,21 +196,29 @@ const transformMsg = async ({ role, content }) => {
 
 const transformMessages = async (messages) => {
   const contents = [];
-  let system_instruction;
+  // let system_instruction;
   for (const item of messages) {
     if (item.role === "system") {
-      delete item.role;
-      system_instruction = await transformMsg(item);
+      // delete item.role;
+      // system_instruction = await transformMsg(item);
+      item.role = "user";
+      contents.push(await transformMsg(item));
+      contents.push({ role: "model", parts: { text: "" } });
     } else {
       item.role = item.role === "assistant" ? "model" : "user";
       contents.push(await transformMsg(item));
     }
   }
-  if (system_instruction && contents.length === 0) {
+
+  if (contents.length > 0 && contents[contents.length - 1].role !== "user") {
     contents.push({ role: "user", parts: { text: "" } });
   }
+  // if (system_instruction && contents.length === 0) {
+  //   contents.push({ role: "user", parts: { text: "" } });
+  // }
   //console.info(JSON.stringify(contents, 2));
-  return { system_instruction, contents };
+  // return { system_instruction, contents };
+  return { contents };
 };
 
 const transformRequest = async (req) => ({
